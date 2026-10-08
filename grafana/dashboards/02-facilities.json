@@ -3,7 +3,7 @@
   "title": "02 · Facilities — power and cooling",
   "description": "Is power and cooling redundant right now, and how much headroom is left?",
   "tags": [
-    "neocloud"
+    "gpu-observability"
   ],
   "timezone": "browser",
   "schemaVersion": 39,
@@ -798,7 +798,7 @@
     {
       "type": "dashboards",
       "tags": [
-        "neocloud"
+        "gpu-observability"
       ],
       "asDropdown": false,
       "title": "Layers",

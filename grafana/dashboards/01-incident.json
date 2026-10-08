@@ -3,7 +3,7 @@
   "title": "01 · Incident response — first 2 minutes",
   "description": "What is burning, where it started, which racks and tenants are hit: one screen for the first two minutes.",
   "tags": [
-    "neocloud"
+    "gpu-observability"
   ],
   "timezone": "browser",
   "schemaVersion": 39,
@@ -1200,7 +1200,7 @@
     {
       "type": "dashboards",
       "tags": [
-        "neocloud"
+        "gpu-observability"
       ],
       "asDropdown": false,
       "title": "Layers",

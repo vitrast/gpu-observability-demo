@@ -105,7 +105,7 @@ def check_grafana():
         health = get(f"{GRAFANA}/api/datasources/uid/{uid}/health")
         report(health.get("status") == "OK", f"Grafana datasource '{uid}' is healthy",
                health.get("message", ""))
-    found = {d["uid"] for d in get(f"{GRAFANA}/api/search?tag=neocloud")}
+    found = {d["uid"] for d in get(f"{GRAFANA}/api/search?tag=gpu-observability")}
     expected = {p.stem for p in DASHBOARDS.glob("*.json")}
     report(found == expected, f"Grafana loaded {len(found)}/{len(expected)} dashboards",
            ", ".join(sorted(expected - found)))

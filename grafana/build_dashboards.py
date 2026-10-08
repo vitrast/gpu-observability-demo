@@ -123,11 +123,11 @@ class Board:
                 "includeAll": True, "multi": True, "allValue": ".*", "refresh": 2, "sort": 1,
                 "current": {"selected": True, "text": ["All"], "value": ["$__all"]}})
         board = {
-            "uid": self.uid, "title": self.title, "description": self.desc, "tags": ["neocloud"],
+            "uid": self.uid, "title": self.title, "description": self.desc, "tags": ["gpu-observability"],
             "timezone": "browser", "schemaVersion": 39, "version": 1, "editable": True, "refresh": "10s",
             "time": {"from": "now-30m", "to": "now"}, "panels": self.panels,
             "templating": {"list": templating},
-            "links": [{"type": "dashboards", "tags": ["neocloud"], "asDropdown": False,
+            "links": [{"type": "dashboards", "tags": ["gpu-observability"], "asDropdown": False,
                        "title": "Layers", "keepTime": True, "includeVars": False}],
         }
         OUT.mkdir(exist_ok=True)

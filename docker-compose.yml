@@ -1,4 +1,4 @@
-# GPU neocloud observability — one site, full stack.
+# GPU observability demo — one site, full stack.
 #   fleet-sim -> vmagent -> VictoriaMetrics <- vmalert -> Alertmanager
 #   fleet-sim -> VictoriaLogs
 #   Grafana reads VictoriaMetrics + VictoriaLogs

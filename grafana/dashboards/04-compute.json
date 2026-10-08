@@ -3,7 +3,7 @@
   "title": "04 · Compute — GPUs and servers",
   "description": "Are GPUs doing real work, throttling, falling off the bus, or silent?",
   "tags": [
-    "neocloud"
+    "gpu-observability"
   ],
   "timezone": "browser",
   "schemaVersion": 39,
@@ -703,7 +703,7 @@
     {
       "type": "dashboards",
       "tags": [
-        "neocloud"
+        "gpu-observability"
       ],
       "asDropdown": false,
       "title": "Layers",

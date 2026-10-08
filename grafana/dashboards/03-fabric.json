@@ -3,7 +3,7 @@
   "title": "03 · Network fabric — links, errors, congestion",
   "description": "Which cable is sick, and which GPU and tenant sit behind it?",
   "tags": [
-    "neocloud"
+    "gpu-observability"
   ],
   "timezone": "browser",
   "schemaVersion": 39,
@@ -600,7 +600,7 @@
     {
       "type": "dashboards",
       "tags": [
-        "neocloud"
+        "gpu-observability"
       ],
       "asDropdown": false,
       "title": "Layers",

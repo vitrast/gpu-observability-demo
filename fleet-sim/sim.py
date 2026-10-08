@@ -1,5 +1,5 @@
 """
-fleet-sim: a physics-lite simulator of one GPU neocloud site.
+fleet-sim: a physics-lite simulator of one GPU data center.
 
 In-memory model:  UPS -> RPP -> rack PDU (A/B) -> servers -> GPUs -> tenant jobs
                   CRAH -> rack inlet air -> GPU temperature -> throttling

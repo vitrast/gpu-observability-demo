@@ -3,7 +3,7 @@
   "title": "05 · Platform — Kubernetes, tenants, and the observability platform itself",
   "description": "Are tenants getting what they pay for, and is the observability platform itself healthy?",
   "tags": [
-    "neocloud"
+    "gpu-observability"
   ],
   "timezone": "browser",
   "schemaVersion": 39,
@@ -804,7 +804,7 @@
     {
       "type": "dashboards",
       "tags": [
-        "neocloud"
+        "gpu-observability"
       ],
       "asDropdown": false,
       "title": "Layers",
