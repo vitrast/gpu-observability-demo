@@ -1,0 +1,88 @@
+# GPU neocloud observability — one site, full stack.
+#   fleet-sim -> vmagent -> VictoriaMetrics <- vmalert -> Alertmanager
+#   fleet-sim -> VictoriaLogs
+#   Grafana reads VictoriaMetrics + VictoriaLogs
+# Versions below are the ones this demo was tested with; bump deliberately.
+services:
+  fleet-sim:
+    build: ./fleet-sim
+    environment:
+      SPEED: "3"                 # physics speed-up so incidents unfold in minutes
+      TICK_SECONDS: "5"
+      LOGS_URL: http://victorialogs:9428
+    ports: ["9100:9100"]
+    restart: unless-stopped
+
+  vmagent:
+    image: victoriametrics/vmagent:v1.153.0
+    command:
+      - "-promscrape.config=/etc/vmagent/scrape.yml"
+      - "-remoteWrite.url=http://victoriametrics:8428/api/v1/write"
+      - "-remoteWrite.tmpDataPath=/vmagent-buffer"     # on-disk buffer while storage is unreachable
+    volumes:
+      - ./vmagent/scrape.yml:/etc/vmagent/scrape.yml:ro
+      - vmagent-buffer:/vmagent-buffer
+    ports: ["8429:8429"]
+    restart: unless-stopped
+
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:v1.153.0
+    command:
+      - "-storageDataPath=/storage"
+      - "-retentionPeriod=30d"
+      - "-search.latencyOffset=5s"                     # show fresh points quickly in a live demo
+      - "-vmalert.proxyURL=http://vmalert:8880"         # exposes vmalert rules/alerts via VMUI
+    volumes: [vm-data:/storage]
+    ports: ["8428:8428"]
+    restart: unless-stopped
+
+  vmalert:
+    image: victoriametrics/vmalert:v1.153.0
+    command:
+      - "-rule=/etc/vmalert/rules/*.yml"
+      - "-datasource.url=http://victoriametrics:8428"
+      - "-remoteWrite.url=http://victoriametrics:8428"   # recording rules + ALERTS series
+      - "-remoteRead.url=http://victoriametrics:8428"    # restore alert state after restart
+      - "-notifier.url=http://alertmanager:9093"
+      - "-evaluationInterval=15s"
+    volumes:
+      - ./vmalert/rules:/etc/vmalert/rules:ro
+    ports: ["8880:8880"]
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.34.1
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports: ["9093:9093"]
+    restart: unless-stopped
+
+  victorialogs:
+    image: victoriametrics/victoria-logs:v1.53.0
+    command:
+      - "-storageDataPath=/vlogs"
+      - "-retentionPeriod=7d"
+    volumes: [vl-data:/vlogs]
+    ports: ["9428:9428"]
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:12.1.0
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
+      GF_PLUGINS_PREINSTALL: "victoriametrics-logs-datasource"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/01-incident.json
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports: ["3000:3000"]
+    restart: unless-stopped
+
+volumes:
+  vm-data:
+  vl-data:
+  vmagent-buffer:

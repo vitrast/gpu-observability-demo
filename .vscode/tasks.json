@@ -1,0 +1,78 @@
+// Ctrl+Shift+P -> "Tasks: Run Task". "check: stack" is also the default test task (Ctrl+Shift+P -> "Tasks: Run Test Task").
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "stack: up",
+      "type": "process",
+      "command": "docker",
+      "args": ["compose", "up", "-d", "--build"],
+      "problemMatcher": []
+    },
+    {
+      "label": "stack: down",
+      "type": "process",
+      "command": "docker",
+      "args": ["compose", "down"],
+      "problemMatcher": []
+    },
+    {
+      "label": "check: stack",
+      "type": "process",
+      "command": "python",
+      "args": ["scripts/check.py"],
+      "group": {"kind": "test", "isDefault": true},
+      "problemMatcher": []
+    },
+    {
+      "label": "check: one scenario",
+      "type": "process",
+      "command": "python",
+      "args": ["scripts/check.py", "${input:scenario}"],
+      "problemMatcher": []
+    },
+    {
+      "label": "check: everything (~20 min)",
+      "type": "process",
+      "command": "python",
+      "args": ["scripts/check.py", "all"],
+      "problemMatcher": []
+    },
+    {
+      // same URLs as scripts/scenario.sh; inject and watch Grafana by hand, then run it again with "reset"
+      "label": "scenario: inject",
+      "type": "process",
+      "command": "curl",
+      "args": ["-s", "${input:inject}"],
+      "problemMatcher": []
+    },
+    {
+      "label": "dashboards: rebuild",
+      "type": "process",
+      "command": "python",
+      "args": ["grafana/build_dashboards.py"],
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "scenario",
+      "type": "pickString",
+      "description": "Scenario to inject, wait for and reset",
+      "options": ["power", "ups", "cooling", "fabric"]
+    },
+    {
+      "id": "inject",
+      "type": "pickString",
+      "description": "Incident to inject (stays on until reset)",
+      "options": [
+        {"label": "power: RPP trips", "value": "http://localhost:9100/scenario/rpp_trip?rpp=rpp-r1-b"},
+        {"label": "ups: UPS on battery", "value": "http://localhost:9100/scenario/ups_on_battery?ups=ups-b"},
+        {"label": "cooling: CRAH degrades", "value": "http://localhost:9100/scenario/cooling_failure?row=r2"},
+        {"label": "fabric: one cable degrades", "value": "http://localhost:9100/scenario/fabric_link?host=gpu-r1-03-n01&gpu=3"},
+        {"label": "reset", "value": "http://localhost:9100/scenario/reset"},
+        {"label": "status", "value": "http://localhost:9100/status"}
+      ]
+    }
+  ]
+}

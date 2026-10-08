@@ -1,0 +1,31 @@
+# Per-site collector. Each job behaves like a separate exporter with its own polling budget.
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: facilities          # UPS, RPP, rack PDUs, rack sensors, CRAH  (SNMP / Modbus / BMS in prod)
+    scrape_interval: 30s
+    metrics_path: /metrics/facilities
+    static_configs: [{targets: ["fleet-sim:9100"]}]
+
+  - job_name: gpu                 # dcgm-exporter in prod
+    metrics_path: /metrics/gpu
+    static_configs: [{targets: ["fleet-sim:9100"]}]
+
+  - job_name: fabric              # UFM / gNMI (switch side) + node_exporter infiniband (host side) in prod
+    metrics_path: /metrics/fabric
+    static_configs: [{targets: ["fleet-sim:9100"]}]
+
+  - job_name: platform            # kube-state-metrics + BMC (Redfish) in prod
+    metrics_path: /metrics/platform
+    static_configs: [{targets: ["fleet-sim:9100"]}]
+
+  - job_name: topology            # join tables: NetBox + Kubernetes in prod
+    scrape_interval: 60s
+    metrics_path: /metrics/topology
+    static_configs: [{targets: ["fleet-sim:9100"]}]
+
+  # the observability platform watches itself
+  - job_name: platform-self
+    static_configs:
+      - targets: ["victoriametrics:8428", "vmagent:8429", "vmalert:8880", "alertmanager:9093", "victorialogs:9428"]

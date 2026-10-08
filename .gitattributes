@@ -1,0 +1,2 @@
+# Keep LF everywhere: scripts run in bash and configs are mounted into Linux containers.
+* text=auto eol=lf

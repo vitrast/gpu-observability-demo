@@ -1,0 +1,99 @@
+# Recording rules = the stable "API" for dashboards and alerts.
+# Dashboards never depend on raw exporter names directly where a derived metric exists.
+groups:
+  - name: vendor-neutral-gpu        # DCGM today, AMD/other vendors map into the same names later
+    interval: 15s
+    rules:
+      - record: gpu_temperature_celsius
+        expr: DCGM_FI_DEV_GPU_TEMP
+      - record: gpu_compute_active_ratio
+        expr: DCGM_FI_PROF_SM_ACTIVE
+      - record: gpu_power_watts
+        expr: DCGM_FI_DEV_POWER_USAGE
+      - record: gpu_throttled
+        expr: DCGM_FI_DEV_CLOCK_THROTTLE_REASONS > bool 0
+
+  - name: rack-rollups
+    interval: 15s
+    rules:
+      - record: rack:inlet_temperature_celsius:max
+        expr: max by (site, row, rack) (facility_rack_inlet_temperature_celsius)
+      - record: rack:gpu_temperature_celsius:max
+        expr: max by (site, row, rack) (DCGM_FI_DEV_GPU_TEMP * on(Hostname) group_left(site, row, rack) node_topology_info)
+      - record: rack:gpu_throttled:count
+        expr: |
+          count by (site, row, rack) ((DCGM_FI_DEV_CLOCK_THROTTLE_REASONS > 0) * on(Hostname) group_left(site, row, rack) node_topology_info)
+          or max by (site, row, rack) (node_topology_info) * 0
+      - record: rack:nodes_notready:count
+        expr: |
+          count by (site, row, rack) (label_replace(kube_node_status_ready == 0, "Hostname", "$1", "node", "(.*)") * on(Hostname) group_left(site, row, rack) node_topology_info)
+          or max by (site, row, rack) (node_topology_info) * 0
+      - record: rack:power_feeds_live:count
+        expr: sum by (site, row, rack) (facility_pdu_input_ok * (1 - facility_pdu_breaker_tripped))
+
+  - name: tenant-sli
+    interval: 15s
+    rules:
+      - record: tenant:gpus_allocated:count
+        expr: count by (tenant) (gpu_tenant_info)
+      - record: tenant:gpus_healthy:count
+        expr: |
+          count by (tenant) (
+            (gpu_tenant_info * on(Hostname) group_left() label_replace(kube_node_status_ready == 1, "Hostname", "$1", "node", "(.*)"))
+            unless on(UUID) (DCGM_FI_DEV_XID_ERRORS == 79)
+          )
+          or count by (tenant) (gpu_tenant_info) * 0
+
+  # second-stage rules read first-stage results (one evaluation of lag is fine)
+  - name: status-and-slo
+    interval: 15s
+    rules:
+      - record: tenant:gpu_availability:ratio
+        expr: tenant:gpus_healthy:count / tenant:gpus_allocated:count
+      - record: tenant:slo_burn_rate:1m          # SLO 99.5% -> error budget 0.005
+        expr: (1 - avg_over_time(tenant:gpu_availability:ratio[1m])) / 0.005
+      - record: tenant:slo_burn_rate:5m
+        expr: (1 - avg_over_time(tenant:gpu_availability:ratio[5m])) / 0.005
+
+      # "Where": worst signal per rack, 0 = fine, higher = more layers hurting
+      - record: rack:status
+        expr: |
+          (rack:inlet_temperature_celsius:max > bool 27)
+          + (rack:gpu_throttled:count > bool 0)
+          + (rack:power_feeds_live:count < bool 2)
+          + (rack:power_feeds_live:count < bool 1)
+          + (rack:nodes_notready:count > bool 0)
+
+      # "Where did it start": one 0/1 line per layer for the incident timeline
+      - record: layer:status
+        labels: {layer: "1 facilities"}
+        expr: |
+          clamp_max(
+              (max(facility_rack_inlet_temperature_celsius) > bool 27)
+            + (min(facility_crah_cooling_capacity_ratio) < bool 0.9)
+            + (max(facility_ups_on_battery) > bool 0)
+            + (min(facility_rpp_output_ok) < bool 1)
+            + (max(facility_pdu_breaker_tripped) > bool 0)
+            + (max(facility_pdu_breaker_load_ratio) > bool 0.8), 1)
+      - record: layer:status
+        labels: {layer: "2 fabric"}
+        expr: |
+          clamp_max(
+              (max(rate(fabric_port_symbol_errors_total[1m])) > bool 5)
+            + (sum(increase(fabric_port_link_downed_total[2m])) > bool 0)
+            + (min(fabric_port_speed_gbps > 0) < bool 400), 1)
+      - record: layer:status
+        labels: {layer: "3 compute"}
+        expr: |
+          clamp_max(
+              ((count(DCGM_FI_DEV_CLOCK_THROTTLE_REASONS > 0) or vector(0)) > bool 0)
+            + (max(DCGM_FI_DEV_XID_ERRORS) >= bool 79), 1)
+      - record: layer:status
+        labels: {layer: "4 platform"}
+        expr: clamp_max((count(kube_node_status_ready == 0) or vector(0)) > bool 0, 1)
+      - record: layer:status
+        labels: {layer: "5 tenants"}
+        expr: |
+          clamp_max(
+              ((count(tenant_job_up == 0) or vector(0)) > bool 0)
+            + (max(tenant_job_step_duration_seconds) > bool 1.45), 1)

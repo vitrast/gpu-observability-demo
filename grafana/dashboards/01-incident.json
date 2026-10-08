@@ -1,0 +1,1211 @@
+{
+  "uid": "01-incident",
+  "title": "01 · Incident response — first 2 minutes",
+  "description": "What is burning, where it started, which racks and tenants are hit: one screen for the first two minutes.",
+  "tags": [
+    "neocloud"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "10s",
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Pages firing",
+      "description": "Page-severity alerts firing in vmalert, before Alertmanager groups and inhibits them. 0 is the normal state.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          },
+          "expr": "count(ALERTS{alertstate=\"firing\", severity=\"page\"}) or vector(0)",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "mappings": [],
+          "links": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Notifications sent",
+      "description": "Alerts Alertmanager is routing to receivers now. At rest this is 1: the Watchdog heartbeat, a dead man's switch proving the alerting path works.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          },
+          "expr": "sum(alertmanager_alerts{state=\"active\"}) or vector(0)",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "mappings": [],
+          "links": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 2
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Suppressed as consequences",
+      "description": "Alerts inhibited along the dependency chains (UPS → RPP → rack → node → GPU; CRAH → throttling; flapping link → its error counters). Many here and few notifications = people get the cause, not the noise.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          },
+          "expr": "sum(alertmanager_alerts{state=\"suppressed\"}) or vector(0)",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "mappings": [],
+          "links": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Tenants burning SLO",
+      "description": "Tenants spending their GPU-availability error budget faster than it accrues (burn rate > 1 over the last minute). The page fires at 14.4x on two windows.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          },
+          "expr": "count(tenant:slo_burn_rate:1m > 1) or vector(0)",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "mappings": [],
+          "links": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "GPUs unavailable to tenants",
+      "description": "GPUs allocated to tenants minus GPUs that are usable (node Ready, no XID 79): the customer-facing blast radius.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          },
+          "expr": "sum(tenant:gpus_allocated:count) - sum(tenant:gpus_healthy:count)",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "mappings": [],
+          "links": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Nodes with no GPU telemetry",
+      "description": "'Unknown' is not 'healthy': servers in the inventory whose GPU exporter went silent (unpowered, crashed, unreachable). A silent server must never look green.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          },
+          "expr": "count(node_topology_info unless on(Hostname) DCGM_FI_DEV_GPU_TEMP) or vector(0)",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "mappings": [],
+          "links": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": "nodeGraph",
+      "title": "Dependency graph — the cause and the blast radius",
+      "description": "One dependency graph, live: power (UPS → row power panel → rack feed), cooling (CRAH → rack) and placement (rack → tenant). Colour is the state now. The first red or orange node whose parents are all green is the cause; everything coloured below it is the blast radius. Yellow is a precursor. Click a node for the reason. Computed at query time from the *_info join-table metrics: no topology labels on GPU series.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 18,
+        "h": 15
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          },
+          "expr": "label_keep(union(label_set(label_copy((label_set(max by (ups) (facility_ups_output_ok) == 0, \"mainstat\", \"NO OUTPUT\", \"color\", \"#F2495C\", \"detail__why\", \"UPS output is off: every rack on this feed lost it\") or on(ups) label_set(max by (ups) (facility_ups_on_battery) == 1, \"mainstat\", \"ON BATTERY\", \"color\", \"#FF9830\", \"detail__why\", \"Utility input lost: the battery is draining\") or on(ups) label_set(max by (ups) (facility_ups_output_ok), \"mainstat\", \"OK\", \"color\", \"#73BF69\", \"detail__why\", \"On utility power\")) * 0 + on(ups) group_left() (union(max by (ups) (facility_ups_output_ok{feed=\"A\"}) * 0 - 90, max by (ups) (facility_ups_output_ok{feed=\"B\"}) * 0 + 90)), \"ups\", \"id\", \"ups\", \"title\"), \"subtitle\", \"UPS\", \"fixedY\", \"-170\"), label_set(label_copy((label_set(max by (rpp) (facility_rpp_output_ok) == 0, \"mainstat\", \"NO OUTPUT\", \"color\", \"#F2495C\", \"detail__why\", \"Panel has no output: every rack in the row lost this feed\") or on(rpp) label_set(max by (rpp) (facility_rpp_output_ok), \"mainstat\", \"OK\", \"color\", \"#73BF69\", \"detail__why\", \"Output OK\")) * 0 + on(rpp) group_left() (union(label_value(label_replace(facility_rpp_info{feed=\"A\"}, \"rn\", \"$1\", \"row\", \"r([0-9]+)\"), \"rn\") * 480 - 810, label_value(label_replace(facility_rpp_info{feed=\"B\"}, \"rn\", \"$1\", \"row\", \"r([0-9]+)\"), \"rn\") * 480 - 630)), \"rpp\", \"id\", \"rpp\", \"title\"), \"subtitle\", \"row power panel\", \"fixedY\", \"-60\"), label_set(label_copy((label_set(max by (crah) (facility_crah_cooling_capacity_ratio) < 0.9, \"mainstat\", \"DEGRADED\", \"color\", \"#F2495C\", \"detail__why\", \"Cooling capacity below 90%: the racks of this row heat up\") or on(crah) label_set(max by (crah) (facility_crah_cooling_capacity_ratio), \"mainstat\", \"OK\", \"color\", \"#73BF69\", \"detail__why\", \"Full cooling capacity\")) * 0 + on(crah) group_left() (label_value(label_replace(max by (crah, row) (facility_crah_cooling_capacity_ratio), \"rn\", \"$1\", \"row\", \"r([0-9]+)\"), \"rn\") * 960 - 1440), \"crah\", \"id\", \"crah\", \"title\"), \"subtitle\", \"CRAH (cooling)\", \"fixedY\", \"-60\"), label_set(label_copy((label_set(sum by (rack) (facility_pdu_input_ok * (1 - facility_pdu_breaker_tripped)) == 0, \"mainstat\", \"DARK\", \"color\", \"#F2495C\", \"detail__why\", \"No live power feed\") or on(rack) label_set(max by (rack) (rack:nodes_notready:count) > 0, \"mainstat\", \"NODES DOWN\", \"color\", \"#F2495C\", \"detail__why\", \"At least one server is NotReady\") or on(rack) label_set(max by (rack) (rack:gpu_throttled:count) > 0, \"mainstat\", \"THROTTLING\", \"color\", \"#FF9830\", \"detail__why\", \"GPUs are thermally throttling: jobs run slower\") or on(rack) label_set(max by (rack) (rack:inlet_temperature_celsius:max) > 27, \"mainstat\", \"HOT AISLE\", \"color\", \"#FF9830\", \"detail__why\", \"Inlet air above the ASHRAE recommended 27 C\") or on(rack) label_set(count by (rack) (((rate(fabric_port_symbol_errors_total[1m]) > 5) or (increase(fabric_port_link_downed_total[2m]) > 0) or ((fabric_port_speed_gbps > 0) < 400)) * on(switch, port) group_left(rack) fabric_link_info{peer_type=\"host\"}), \"mainstat\", \"LINK ERRORS\", \"color\", \"#FF9830\", \"detail__why\", \"A fabric link to a server here is erroring, flapping or below rated speed\") or on(rack) label_set(sum by (rack) (facility_pdu_input_ok * (1 - facility_pdu_breaker_tripped)) == 1, \"mainstat\", \"ONE FEED\", \"color\", \"#FF9830\", \"detail__why\", \"Running on one feed: the next failure takes the rack down\") or on(rack) label_set(max by (rack) (facility_pdu_breaker_load_ratio) > 0.5, \"mainstat\", \"N+1 RISK\", \"color\", \"#FADE2A\", \"detail__why\", \"Each feed carries more than 50% of its breaker: losing one overloads the other\") or on(rack) label_set(max by (rack) (node_topology_info), \"mainstat\", \"OK\", \"color\", \"#73BF69\", \"detail__why\", \"Both feeds live, cool, all servers Ready\")) * 0 + on(rack) group_left() ((label_value(label_replace(label_replace(max by (rack) (node_topology_info), \"rn\", \"$1\", \"rack\", \"r([0-9]+)-.*\"), \"kn\", \"$1\", \"rack\", \"r[0-9]+-([0-9]+)\"), \"rn\") - 1) * 480 + (label_value(label_replace(label_replace(max by (rack) (node_topology_info), \"rn\", \"$1\", \"rack\", \"r([0-9]+)-.*\"), \"kn\", \"$1\", \"rack\", \"r[0-9]+-([0-9]+)\"), \"kn\") - 1) * 120 - 420), \"rack\", \"id\", \"rack\", \"title\"), \"subtitle\", \"rack\", \"fixedY\", \"50\"), label_set(label_join(label_set(label_copy(((label_set(max by (tenant) (tenant_job_up) == 0, \"mainstat\", \"STALLED\", \"color\", \"#F2495C\", \"detail__why\", \"Training job is down: it lost servers or GPUs\") or on(tenant) label_set(min by (tenant) (tenant:gpu_availability:ratio) < 0.995, \"mainstat\", \"GPUS LOST\", \"color\", \"#F2495C\", \"detail__why\", \"GPU availability is below the 99.5% SLO\") or on(tenant) label_set(max by (tenant) (tenant_job_step_duration_seconds) > 1.45, \"mainstat\", \"SLOW\", \"color\", \"#FF9830\", \"detail__why\", \"Training step time above 1.45 s (baseline about 1.2 s)\") or on(tenant) label_set(max by (tenant) (tenant_info), \"mainstat\", \"OK\", \"color\", \"#73BF69\", \"detail__why\", \"Job running at normal speed\")) * 0 + on(tenant) group_left() (avg by (tenant) (((label_value(label_replace(label_replace(max by (rack) (node_topology_info), \"rn\", \"$1\", \"rack\", \"r([0-9]+)-.*\"), \"kn\", \"$1\", \"rack\", \"r[0-9]+-([0-9]+)\"), \"rn\") - 1) * 480 + (label_value(label_replace(label_replace(max by (rack) (node_topology_info), \"rn\", \"$1\", \"rack\", \"r([0-9]+)-.*\"), \"kn\", \"$1\", \"rack\", \"r[0-9]+-([0-9]+)\"), \"kn\") - 1) * 120 - 420) + on(rack) group_left(tenant) (count by (rack, tenant) (node_tenant_info * on(Hostname) group_left(rack) node_topology_info) * 0)))) * on(tenant) group_left(sla) tenant_info, \"tenant\", \"id\", \"tenant\", \"title\"), \"sla_prefix\", \"tenant · SLA \"), \"subtitle\", \"\", \"sla_prefix\", \"sla\"), \"fixedY\", \"160\")), \"id\", \"title\", \"subtitle\", \"mainstat\", \"color\", \"detail__why\", \"fixedY\")",
+          "legendFormat": "",
+          "refId": "nodes",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          },
+          "expr": "label_keep(label_join(union(label_copy(label_set(facility_rpp_info * on(ups) group_left() (max by (ups) (facility_ups_output_ok) == 0) * 0 + 4, \"mainstat\", \"no power\", \"color\", \"#F2495C\") or on(rpp) label_set(facility_rpp_info * on(ups) group_left() (max by (ups) (facility_ups_on_battery) == 1) * 0 + 3, \"mainstat\", \"on battery\", \"color\", \"#FF9830\") or on(rpp) label_set(facility_rpp_info * 0 + 1, \"mainstat\", \"power OK\", \"color\", \"#6E7480\"), \"ups\", \"source\", \"rpp\", \"target\"), label_copy(label_set(((facility_pdu_input_ok * (1 - facility_pdu_breaker_tripped)) * on(row, feed) group_left(rpp) facility_rpp_info == 0) * 0 + 4, \"mainstat\", \"feed dead\", \"color\", \"#F2495C\") or on(pdu) label_set((facility_pdu_breaker_load_ratio * on(row, feed) group_left(rpp) facility_rpp_info > 0.5) * 0 + 2, \"mainstat\", \"feed above 50%: no N+1\", \"color\", \"#FADE2A\") or on(pdu) label_set((facility_pdu_input_ok * (1 - facility_pdu_breaker_tripped)) * on(row, feed) group_left(rpp) facility_rpp_info * 0 + 1, \"mainstat\", \"feed OK\", \"color\", \"#6E7480\"), \"rpp\", \"source\", \"rack\", \"target\"), label_copy(label_set(count by (crah, rack) (node_topology_info) * on(crah) group_left() (max by (crah) (facility_crah_cooling_capacity_ratio) < 0.9) * 0 + 3, \"mainstat\", \"cooling degraded\", \"color\", \"#F2495C\") or on(rack) label_set(count by (crah, rack) (node_topology_info) * 0 + 1, \"mainstat\", \"cooling OK\", \"color\", \"#6E7480\"), \"crah\", \"source\", \"rack\", \"target\"), label_copy(label_set(count by (rack, tenant) (node_tenant_info * on(Hostname) group_left(rack) node_topology_info) * on(rack) group_left() ((max by (rack) (rack:nodes_notready:count) > 0) or (sum by (rack) (facility_pdu_input_ok * (1 - facility_pdu_breaker_tripped)) == 0)) * 0 + 4, \"mainstat\", \"GPUs lost\", \"color\", \"#F2495C\") or on(rack) label_set(count by (rack, tenant) (node_tenant_info * on(Hostname) group_left(rack) node_topology_info) * on(rack) group_left() ((max by (rack) (rack:gpu_throttled:count) > 0) or count by (rack) (((rate(fabric_port_symbol_errors_total[1m]) > 5) or (increase(fabric_port_link_downed_total[2m]) > 0) or ((fabric_port_speed_gbps > 0) < 400)) * on(switch, port) group_left(rack) fabric_link_info{peer_type=\"host\"})) * 0 + 3, \"mainstat\", \"slowed down\", \"color\", \"#FF9830\") or on(rack) label_set(count by (rack, tenant) (node_tenant_info * on(Hostname) group_left(rack) node_topology_info) * 0 + 1, \"mainstat\", \"serving\", \"color\", \"#6E7480\"), \"rack\", \"source\", \"tenant\", \"target\")), \"id\", \"->\", \"source\", \"target\"), \"id\", \"source\", \"target\", \"color\", \"mainstat\")",
+          "legendFormat": "",
+          "refId": "edges",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "nodes": {
+          "mainStatUnit": "none"
+        },
+        "edges": {
+          "mainStatUnit": "none"
+        },
+        "zoomMode": "cooperative"
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            }
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "reduceRow",
+            "reduce": {
+              "reducer": "sum",
+              "include": [
+                "Value #nodes"
+              ]
+            },
+            "alias": "fixedX",
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "reduceRow",
+            "reduce": {
+              "reducer": "sum",
+              "include": [
+                "Value #edges"
+              ]
+            },
+            "alias": "thickness",
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "fixedY",
+                "destinationType": "number"
+              }
+            ],
+            "fields": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "text",
+      "title": "How to read this dashboard",
+      "description": "",
+      "datasource": null,
+      "gridPos": {
+        "x": 18,
+        "y": 4,
+        "w": 6,
+        "h": 15
+      },
+      "targets": [],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "**The first two minutes**\n\n1. **Top row**: is anyone paged, how much was suppressed as a consequence, how many tenant GPUs are gone.\n2. **Graph**, top down: the first red or orange node whose parents are all green is the cause; everything coloured below it is the blast radius. All power and cooling green, one rack orange: look at the fabric dashboard. **Yellow** is a precursor: working, but one failure away from red.\n3. **Timeline** below: which layer turned red first.\n4. **Alerts table**: owner and runbook of everything firing.\n\nThen drill down: click a rack under *Where*."
+      }
+    },
+    {
+      "id": 9,
+      "type": "state-timeline",
+      "title": "Where did it start — status by layer",
+      "description": "One line per layer, red while any signal of that layer is out of range. The first line to turn red is usually where the incident started: facilities first means the building, compute alone means the GPU.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 19,
+        "w": 24,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          },
+          "expr": "layer:status",
+          "legendFormat": "{{layer}}",
+          "refId": "A",
+          "instant": false,
+          "range": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "OK",
+                  "index": 0
+                },
+                "1": {
+                  "text": "PROBLEM",
+                  "index": 1
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "showValue": "never",
+        "rowHeight": 0.85,
+        "mergeValues": true,
+        "legend": {
+          "showLegend": false
+        }
+      }
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "What is burning — firing alerts",
+      "description": "Every firing alert with owner (team), severity and location labels. Inhibited alerts are listed too; Alertmanager decides who is actually paged.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 26,
+        "w": 24,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          },
+          "expr": "ALERTS{alertstate=\"firing\", alertname!=\"Watchdog\"}",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value": true,
+              "__name__": true,
+              "job": true,
+              "instance": true,
+              "alertstate": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "Where — racks by worst signal (click for drill-down)",
+      "description": "Number of hurting signals per rack: hot inlet, throttling GPUs, one feed, no power, NotReady servers. Click a rack to open its facilities or GPU view.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 33,
+        "w": 12,
+        "h": 6
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          },
+          "expr": "rack:status",
+          "legendFormat": "{{rack}}",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "mappings": [],
+          "links": [
+            {
+              "title": "Rack ${__field.labels.rack}: facilities",
+              "url": "/d/02-facilities?var-rack=${__field.labels.rack}&${__url_time_range}"
+            },
+            {
+              "title": "Rack ${__field.labels.rack}: GPUs",
+              "url": "/d/04-compute?var-rack=${__field.labels.rack}&${__url_time_range}"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 12,
+      "type": "bargauge",
+      "title": "Who is hit — tenant GPU availability",
+      "description": "Share of each tenant's allocated GPUs that are usable now. Green at or above the 99.5% SLO target.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 33,
+        "w": 12,
+        "h": 6
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          },
+          "expr": "tenant:gpu_availability:ratio",
+          "legendFormat": "{{tenant}}",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.95
+              },
+              {
+                "color": "green",
+                "value": 0.995
+              }
+            ]
+          },
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "showUnfilled": true
+      }
+    },
+    {
+      "id": 13,
+      "type": "table",
+      "title": "Walk up the power chain — NotReady nodes and their upstream devices",
+      "description": "Each NotReady server with both of its power paths (PDU → RPP → UPS for feeds A and B) from the topology join. A device shared by every row is the common cause.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 39,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          },
+          "expr": "label_replace(kube_node_status_ready == 0, \"Hostname\", \"$1\", \"node\", \"(.*)\") * on(Hostname) group_left(rack, pdu_a, rpp_a, ups_a, pdu_b, rpp_b, ups_b) node_power_info",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value": true,
+              "__name__": true,
+              "job": true,
+              "instance": true,
+              "alertstate": true,
+              "node": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "stat",
+      "title": "Upstream power devices with no output",
+      "description": "UPS units and row power panels whose output is off. Any entry here is a facilities incident for a whole feed or row.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 39,
+        "w": 6,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          },
+          "expr": "((facility_rpp_output_ok == bool 0) or (facility_ups_output_ok == bool 0)) == 1",
+          "legendFormat": "{{rpp}}{{ups}}",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "NO OUTPUT",
+                  "color": "red",
+                  "index": 0
+                }
+              }
+            }
+          ],
+          "links": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "All have output"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 15,
+      "type": "bargauge",
+      "title": "Throttling GPUs by CRAH (cooling chain)",
+      "description": "Throttling GPUs grouped by the CRAH that cools them. Many under one CRAH = a cooling problem, not a GPU problem.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 39,
+        "w": 6,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          },
+          "expr": "count by (crah) ((DCGM_FI_DEV_CLOCK_THROTTLE_REASONS > 0) * on(Hostname) group_left(crah) node_topology_info) or max by (crah) (node_topology_info) * 0",
+          "legendFormat": "{{crah}}",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "showUnfilled": true
+      }
+    },
+    {
+      "id": 16,
+      "type": "timeseries",
+      "title": "Tenant training step time",
+      "description": "Seconds per training step per tenant job (baseline about 1.2 s). Throttling or a degraded link shows up here as a customer-visible slowdown; the ticket fires above 1.45 s.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 47,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          },
+          "expr": "tenant_job_step_duration_seconds",
+          "legendFormat": "{{tenant}}",
+          "refId": "A",
+          "instant": false,
+          "range": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": false,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1.45
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 17,
+      "type": "timeseries",
+      "title": "Tenant SLO burn rate (fast-burn page at 14.4x)",
+      "description": "How many times faster than allowed each tenant spends its error budget, on two windows (compressed to 1m/5m for the demo). The page needs both above 14.4x: fast enough to matter, sustained enough not to flap.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 47,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          },
+          "expr": "tenant:slo_burn_rate:1m",
+          "legendFormat": "{{tenant}} 1m",
+          "refId": "A",
+          "instant": false,
+          "range": true,
+          "format": "time_series"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          },
+          "expr": "tenant:slo_burn_rate:5m",
+          "legendFormat": "{{tenant}} 5m",
+          "refId": "B",
+          "instant": false,
+          "range": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": false,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 14.4
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 18,
+      "type": "logs",
+      "title": "Event log — warning and above, all layers",
+      "description": "Events from every layer at warning and above (VictoriaLogs): breaker trips, XID lines, link flaps, UPS alarms. Use it to confirm the order the timeline suggests.",
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "vlogs"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 54,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "vlogs"
+          },
+          "expr": "level:in(critical, error, warning)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending",
+        "enableLogDetails": true
+      }
+    }
+  ],
+  "templating": {
+    "list": []
+  },
+  "links": [
+    {
+      "type": "dashboards",
+      "tags": [
+        "neocloud"
+      ],
+      "asDropdown": false,
+      "title": "Layers",
+      "keepTime": true,
+      "includeVars": false
+    }
+  ]
+}

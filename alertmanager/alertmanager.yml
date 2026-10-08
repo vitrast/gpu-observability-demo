@@ -1,0 +1,49 @@
+# Routing: one notification per cause, sent to the team that owns the cause.
+route:
+  receiver: platform-pager
+  group_by: [alertname, site, row]
+  group_wait: 10s
+  group_interval: 30s
+  repeat_interval: 1h
+  routes:
+    - matchers: ['alertname="Watchdog"']
+      receiver: deadmans-switch          # in prod: external heartbeat service (outside our failure domain)
+      repeat_interval: 1m
+    - matchers: ['severity="ticket"']
+      receiver: ticket-queue
+    - matchers: ['team="facilities"']
+      receiver: facilities-pager
+    - matchers: ['team="network"']
+      receiver: network-pager
+    - matchers: ['team="platform"']
+      receiver: platform-pager
+
+# Inhibition along the dependency chains: the cause silences its consequences.
+inhibit_rules:
+  # cooling: a CRAH problem or a hot aisle explains GPU throttling in that row
+  - source_matchers: ['alertname=~"CRAHDegraded|RackInletTemperatureHigh"']
+    target_matchers: ['alertname="GPUThermalThrottling"']
+    equal: [site, row]
+  # power: UPS output lost explains everything downstream on the site
+  - source_matchers: ['alertname="UPSOutputLost"']
+    target_matchers: ['alertname=~"RPPDown|RackPowerRedundancyLost|PDUBreakerOverloadRisk"']
+    equal: [site]
+  # power: a dead row panel explains lost redundancy and overloaded PDUs in that row
+  - source_matchers: ['alertname="RPPDown"']
+    target_matchers: ['alertname=~"RackPowerRedundancyLost|PDUBreakerOverloadRisk"']
+    equal: [site, row]
+  # power: a dark rack explains its tripped breaker, NotReady nodes and dead GPUs
+  - source_matchers: ['alertname="RackPowerLost"']
+    target_matchers: ['alertname=~"PDUBreakerTripped|NodeNotReady|GPUFellOffBus|RackPowerRedundancyLost"']
+    equal: [site, rack]
+  # fabric: a flapping link explains its own error counters
+  - source_matchers: ['alertname="FabricLinkFlapping"']
+    target_matchers: ['alertname="FabricLinkErrorsRising"']
+    equal: [switch, port]
+
+receivers:                # no integrations in the demo: watch them in the Alertmanager UI
+  - name: facilities-pager
+  - name: network-pager
+  - name: platform-pager
+  - name: ticket-queue
+  - name: deadmans-switch

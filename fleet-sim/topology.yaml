@@ -1,0 +1,43 @@
+# Source of truth for the simulated site.
+# In production: NetBox (power chain, cooling zones, racks, cabling) + Kubernetes (tenant placement)
+# + a tenant registry (SLA tiers).
+site: site-a
+gpu_model: "NVIDIA H100 80GB HBM3"
+gpus_per_node: 8
+nodes_per_rack: 4
+pdu_feed_capacity_watts: 26000      # default per-feed breaker capacity of a rack PDU
+rpp_capacity_watts: 120000
+ups_capacity_watts: 300000
+
+power:                               # utility -> UPS -> RPP (per row, per feed) -> rack PDU -> server PSU
+  ups:
+    - {name: ups-a, feed: A}
+    - {name: ups-b, feed: B}
+
+fabric:                              # rail-optimized: leaf k serves rails (GPU index) 2k and 2k+1 of every node
+  leaves: 4
+  spines: 2
+  uplinks_per_leaf_per_spine: 4
+
+tenants:
+  tenant-a: {sla: "99.5"}
+  tenant-b: {sla: "99.9"}
+  tenant-c: {sla: "99.5"}
+
+rows:
+  - name: r1
+    crah: crah-r1
+    rpp: {A: rpp-r1-a, B: rpp-r1-b}
+    racks:
+      - {name: r1-01, tenant: tenant-a}
+      - {name: r1-02, tenant: tenant-a, pdu_feed_capacity_watts: 23000}   # older PDUs: cannot carry the full rack on one feed
+      - {name: r1-03, tenant: tenant-b}
+      - {name: r1-04, tenant: tenant-c}
+  - name: r2
+    crah: crah-r2
+    rpp: {A: rpp-r2-a, B: rpp-r2-b}
+    racks:
+      - {name: r2-01, tenant: tenant-b}
+      - {name: r2-02, tenant: tenant-c}
+      - {name: r2-03, tenant: tenant-c}
+      - {name: r2-04, tenant: ""}       # free capacity

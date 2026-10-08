@@ -1,0 +1,156 @@
+# Alerting rules. Every alert carries: severity (page|ticket), team (owner), location labels
+# from the topology (site/row/rack/feed...) so Alertmanager can group and inhibit along the chain.
+# NOTE: "for" durations and SLO windows are compressed for a live demo.
+groups:
+  - name: facilities
+    interval: 15s
+    rules:
+      - alert: UPSOnBattery
+        expr: max by (site, ups, feed) (facility_ups_on_battery) == 1
+        labels: {severity: page, team: facilities}
+        annotations:
+          summary: "UPS {{ $labels.ups }} (feed {{ $labels.feed }}) is running on battery"
+          runbook_url: "https://runbooks.example/facilities/ups-on-battery"
+      - alert: UPSOutputLost
+        expr: max by (site, ups, feed) (facility_ups_output_ok) == 0
+        labels: {severity: page, team: facilities}
+        annotations:
+          summary: "UPS {{ $labels.ups }} output lost: every rack lost feed {{ $labels.feed }}"
+          runbook_url: "https://runbooks.example/facilities/ups-output-lost"
+      - alert: RPPDown
+        expr: max by (site, row, rpp, feed) (facility_rpp_output_ok) == 0
+        labels: {severity: page, team: facilities}
+        annotations:
+          summary: "Row power panel {{ $labels.rpp }} has no output: row {{ $labels.row }} lost feed {{ $labels.feed }}"
+          runbook_url: "https://runbooks.example/facilities/rpp-down"
+      - alert: RackPowerRedundancyLost
+        expr: rack:power_feeds_live:count == 1
+        for: 15s
+        labels: {severity: page, team: facilities}
+        annotations:
+          summary: "Rack {{ $labels.rack }} runs on a single feed: the next failure takes it down"
+          runbook_url: "https://runbooks.example/facilities/redundancy-lost"
+      - alert: PDUBreakerOverloadRisk
+        expr: max by (site, row, rack, pdu, feed) (facility_pdu_breaker_load_ratio) > 0.8
+        for: 15s
+        labels: {severity: page, team: facilities}
+        annotations:
+          summary: "PDU {{ $labels.pdu }} at {{ $value | humanizePercentage }} of breaker rating"
+          runbook_url: "https://runbooks.example/facilities/breaker-overload"
+      - alert: PDUBreakerTripped
+        expr: max by (site, row, rack, pdu, feed) (facility_pdu_breaker_tripped) == 1
+        labels: {severity: page, team: facilities}
+        annotations:
+          summary: "PDU {{ $labels.pdu }} breaker tripped"
+          runbook_url: "https://runbooks.example/facilities/breaker-tripped"
+      - alert: RackPowerLost
+        expr: rack:power_feeds_live:count == 0
+        labels: {severity: page, team: facilities}
+        annotations:
+          summary: "Rack {{ $labels.rack }} has no power"
+          runbook_url: "https://runbooks.example/facilities/rack-dark"
+      - alert: CRAHDegraded
+        expr: max by (site, row, crah) (facility_crah_cooling_capacity_ratio) < 0.9
+        labels: {severity: page, team: facilities}
+        annotations:
+          summary: "CRAH {{ $labels.crah }} at {{ $value | humanizePercentage }} capacity (row {{ $labels.row }})"
+          runbook_url: "https://runbooks.example/facilities/crah-degraded"
+      - alert: RackInletTemperatureHigh
+        expr: rack:inlet_temperature_celsius:max > 27
+        for: 30s
+        labels: {severity: page, team: facilities}
+        annotations:
+          summary: "Rack {{ $labels.rack }} inlet {{ $value | printf \"%.1f\" }}°C (ASHRAE recommended max 27°C)"
+          runbook_url: "https://runbooks.example/facilities/inlet-hot"
+
+  - name: fabric
+    interval: 15s
+    rules:
+      - alert: FabricLinkErrorsRising
+        expr: |
+          (rate(fabric_port_symbol_errors_total[1m]) > 5)
+          * on(switch, port) group_left(Hostname, gpu, rack, row) fabric_link_info
+        labels: {severity: ticket, team: network}
+        annotations:
+          summary: "{{ $labels.switch }}:{{ $labels.port }} symbol errors rising (cable/optic to {{ $labels.Hostname }} GPU {{ $labels.gpu }})"
+          runbook_url: "https://runbooks.example/network/link-errors"
+      - alert: FabricLinkFlapping
+        expr: |
+          (increase(fabric_port_link_downed_total[2m]) > 1)
+          * on(switch, port) group_left(Hostname, gpu, rack, row) fabric_link_info
+        labels: {severity: page, team: network}
+        annotations:
+          summary: "{{ $labels.switch }}:{{ $labels.port }} is flapping (peer {{ $labels.Hostname }} GPU {{ $labels.gpu }})"
+          runbook_url: "https://runbooks.example/network/link-flapping"
+      - alert: FabricLinkDegradedSpeed
+        expr: |
+          ((fabric_port_speed_gbps > 0) < 400)
+          * on(switch, port) group_left(Hostname, gpu, rack, row) fabric_link_info
+        for: 30s
+        labels: {severity: ticket, team: network}
+        annotations:
+          summary: "{{ $labels.switch }}:{{ $labels.port }} running at {{ $value }} Gb/s instead of 400"
+          runbook_url: "https://runbooks.example/network/link-speed"
+
+  - name: compute
+    interval: 15s
+    rules:
+      - alert: GPUThermalThrottling
+        expr: rack:gpu_throttled:count > 0
+        for: 30s
+        labels: {severity: ticket, team: platform}
+        annotations:
+          summary: "{{ $value }} GPUs thermally throttling in rack {{ $labels.rack }}"
+          runbook_url: "https://runbooks.example/platform/gpu-throttling"
+      - alert: GPUFellOffBus
+        expr: (DCGM_FI_DEV_XID_ERRORS == 79) * on(Hostname) group_left(site, row, rack) node_topology_info
+        labels: {severity: page, team: platform}
+        annotations:
+          summary: "XID 79 on {{ $labels.Hostname }} GPU {{ $labels.gpu }}: drain the node, open RMA"
+          runbook_url: "https://runbooks.example/platform/xid-79"
+      - alert: NodeNotReady
+        expr: label_replace(kube_node_status_ready == 0, "Hostname", "$1", "node", "(.*)") * on(Hostname) group_left(site, row, rack) node_topology_info
+        labels: {severity: ticket, team: platform}
+        annotations:
+          summary: "Node {{ $labels.Hostname }} is NotReady"
+          runbook_url: "https://runbooks.example/platform/node-notready"
+
+  - name: tenants
+    interval: 15s
+    rules:
+      - alert: TenantSLOBurnFast
+        expr: tenant:slo_burn_rate:5m > 14.4 and tenant:slo_burn_rate:1m > 14.4
+        labels: {severity: page, team: platform}
+        annotations:
+          summary: "{{ $labels.tenant }} is burning its GPU-availability error budget {{ $value | printf \"%.0f\" }}x too fast"
+          runbook_url: "https://runbooks.example/platform/tenant-slo"
+      - alert: TenantJobStalled
+        expr: tenant_job_up == 0
+        for: 30s
+        labels: {severity: page, team: platform}
+        annotations:
+          summary: "Training job {{ $labels.workload }} of {{ $labels.tenant }} is stalled"
+          runbook_url: "https://runbooks.example/platform/job-stalled"
+      - alert: TenantJobSlow
+        expr: tenant_job_step_duration_seconds > 1.45
+        for: 1m
+        labels: {severity: ticket, team: platform}
+        annotations:
+          summary: "{{ $labels.tenant }} step time {{ $value | printf \"%.2f\" }}s (baseline ~1.2s)"
+          runbook_url: "https://runbooks.example/platform/job-slow"
+
+  - name: meta
+    interval: 15s
+    rules:
+      - alert: Watchdog                     # always firing: dead man's switch for the whole pipeline
+        expr: vector(1)
+        labels: {severity: none, team: platform}
+        annotations:
+          summary: "Alerting pipeline is alive. If this stops arriving at the external heartbeat service, page."
+      - alert: TelemetryTargetDown          # "no data" is not "healthy": we are blind somewhere
+        expr: up == 0
+        for: 30s
+        labels: {severity: page, team: platform}
+        annotations:
+          summary: "Scrape target {{ $labels.job }}/{{ $labels.instance }} is down: blind spot"
+          runbook_url: "https://runbooks.example/platform/target-down"
